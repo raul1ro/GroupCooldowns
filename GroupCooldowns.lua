@@ -1,62 +1,13 @@
 local _, Addon = ...;
 
--- Get the bar from the list, if the bar is still visible
--- or create a new bar
-Addon.ActiveBars = {
-	["control"] = {},
-	["cleanse"] = {}
-};
 Addon.CurrentInstance = nil;
-local function getBar(spellType, spellKey, spellId, playerName, icon, colorRGB, targetName)
-
-	-- get the bar from actives, if exists
-	local bar = Addon.ActiveBars[spellType][spellKey];
-	
-	-- if there is no bar
-	if(bar == nil) then
-	
-		-- request a bar
-		-- and implement OnFinish
-		bar = Addon.ProgressBar.getProgressBar(135, 17, "Interface\\AddOns\\GroupCooldowns\\bar_serenity", icon, playerName, spellId, colorRGB, targetName);
-		function bar.OnFinish()
-
-			local prevBar = bar.prevBar;
-			local nextBar = bar.nextBar;
-			
-			-- reposition next bar 
-			if(nextBar ~= nil) then
-				nextBar.prevBar = prevBar;
-				nextBar:ClearAllPoints();
-				nextBar:SetPoint("BOTTOMRIGHT", prevBar, "TOPRIGHT", 0, 3);
-			end
-			prevBar.nextBar = nextBar;
-			
-			-- reset the bar
-			bar:ClearAllPoints();
-			bar.nextBar = nil;
-			bar.prevBar = nil;
-		
-			-- remove it from actives
-			Addon.ActiveBars[spellType][spellKey] = nil;
-
-			bar:Hide();
-		
-		end
-
-		-- add it to actives
-		Addon.ActiveBars[spellType][spellKey] = bar;
-		
-	end
-	
-	return bar;
-	
-end
+Addon.Modules = {};
 
 -- listener for events
 Addon.Anchors = {};
 local listener = CreateFrame("FRAME");
 listener:RegisterEvent("ADDON_LOADED");
-listener:SetScript("OnEvent", function(_, event, source, subEvent, _, _, sourceName, _, _, _, targetName, _, _, spellId, _) -- the last param, after spellId, is spellName. JICase
+listener:SetScript("OnEvent", function(_, event, source, subEvent, _, _, sourceName, _, _, _, targetName, _, _, spellId, spellName) -- the last param, after spellId, is spellName. JICase
 
 	-- initialize when addon loads
     if (event == "ADDON_LOADED" and source == "GroupCooldowns") then
@@ -109,15 +60,42 @@ listener:SetScript("OnEvent", function(_, event, source, subEvent, _, _, sourceN
 		cleansesLabel:SetText("CLEANSES");
 		
 		Addon.Anchors["cleanse"] = cleansesAnchor;
-		
+
+		-- quaking
+		local quakingAnchor = CreateFrame("Frame", nil, UIParent);
+		quakingAnchor:SetSize(152, 7);
+		quakingAnchor.texture = quakingAnchor:CreateTexture(nil, "BACKGROUND");
+		quakingAnchor.texture:SetAllPoints();
+		quakingAnchor.texture:SetColorTexture(1, 1, 1);
+		quakingAnchor:SetMovable(true);
+		quakingAnchor:EnableMouse(true);
+		quakingAnchor:RegisterForDrag("LeftButton");
+		quakingAnchor:SetScript("OnDragStart", function(self) self:StartMoving() end)
+		quakingAnchor:SetScript("OnDragStop", function(self)
+			self:StopMovingOrSizing();
+			GCQuakingAnchorPosition = {quakingAnchor:GetPoint(0)};
+		end)
+		quakingAnchor.nextBar = nil;
+		local quakingAnchorLabel = quakingAnchor:CreateFontString()
+		quakingAnchorLabel:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE");
+		quakingAnchorLabel:SetJustifyH("CENTER");
+		quakingAnchorLabel:SetJustifyV("MIDDLE");
+		quakingAnchorLabel:SetPoint("CENTER");
+		quakingAnchorLabel:SetText("QUAKING");
+
+		Addon.Anchors["quaking"] = quakingAnchor;
+
 		-- position anchors
 		if(GCControlsAnchorPosition == nil) then GCControlsAnchorPosition = {"CENTER", nil, "CENTER", 0, 0} end
 		if(GCCleansesAnchorPosition == nil) then GCCleansesAnchorPosition = {"CENTER", nil, "CENTER", 0, 0} end
+		if(GCQuakingAnchorPosition == nill) then GCQuakingAnchorPosition = {"CENTER", nil, "CENTER", 0, 0} end
 		controlsAnchor:SetPoint(unpack(GCControlsAnchorPosition));
 		cleansesAnchor:SetPoint(unpack(GCCleansesAnchorPosition));
-		
+		quakingAnchor:SetPoint(unpack(GCQuakingAnchorPosition));
+
 		controlsAnchor:Hide();
 		cleansesAnchor:Hide();
+		quakingAnchor:Hide();
 
 		-- init GCControlsDungeon, GCControlsRaid, GCControlsEverywhere,
 		if(GCControlsDungeon == nil) then GCControlsDungeon = true; end
@@ -127,6 +105,8 @@ listener:SetScript("OnEvent", function(_, event, source, subEvent, _, _, sourceN
 		if(GCCleansesDungeon == nil) then GCCleansesDungeon = true; end
 		if(GCCleansesRaid == nil) then GCCleansesRaid = true; end
 		if(GCCleansesEverywhere == nil) then GCCleansesEverywhere = false; end
+		-- Quaking
+		if(GCQuaking == nil) then GCQuaking = true; end
 
 		-- create interface options
 		Addon.CreateInterfaceOptions();
@@ -136,14 +116,14 @@ listener:SetScript("OnEvent", function(_, event, source, subEvent, _, _, sourceN
 		
 		-- listen enter world
 		listener:RegisterEvent("PLAYER_ENTERING_WORLD")
-		
+
 	elseif(event == "PLAYER_ENTERING_WORLD") then
 
 		_, Addon.CurrentInstance = IsInInstance();
 
 		-- if all of them are disabled
 		-- stop combat events
-		if((GCControlsDungeon or GCControlsRaid or GCControlsEverywhere or GCCleansesDungeon or GCCleansesRaid or GCCleansesEverywhere) == false) then
+		if((GCControlsDungeon or GCControlsRaid or GCControlsEverywhere or GCCleansesDungeon or GCCleansesRaid or GCCleansesEverywhere or GCQuaking) == false) then
 			listener:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
 			return; 
 		end
@@ -156,80 +136,35 @@ listener:SetScript("OnEvent", function(_, event, source, subEvent, _, _, sourceN
 		end
 
 		-- based on instance type
-		-- party & (GCControlsDungeon | GCCleansesDungeon)
+		-- party & (GCControlsDungeon | GCCleansesDungeon | GCQuaking)
 		-- or
 		-- raid & (GCControlsRaid | GCCleansesRaid)
 		-- listen combat events
-		if((Addon.CurrentInstance == "party" and (GCControlsDungeon or GCCleansesDungeon)) or (Addon.CurrentInstance == "raid" and (GCControlsRaid or GCCleansesRaid))) then
+		if((Addon.CurrentInstance == "party" and (GCControlsDungeon or GCCleansesDungeon or GCQuaking)) or (Addon.CurrentInstance == "raid" and (GCControlsRaid or GCCleansesRaid))) then
 			listener:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
 		else
 			listener:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
 		end
-		
-	elseif(event == "COMBAT_LOG_EVENT_UNFILTERED" and subEvent == "SPELL_CAST_SUCCESS") then
 
-		-- check if spell is in one of the lists
-		local spellData, spellType = Addon.findSpell(spellId);
-		if(spellData == nil) then return; end;
+	elseif(event == "COMBAT_LOG_EVENT_UNFILTERED") then
 
-		-- if is control
-		-- everywhere is false
-		-- and
-		-- (party & GCControlsDungeon == false) or (raid & GCControlsRaid == false)
-		-- do nothing > return
-		if(spellType == "control" and GCControlsEverywhere == false and (
-				(Addon.CurrentInstance == "party" and GCControlsDungeon == false) or
-				(Addon.CurrentInstance == "raid" and GCControlsRaid == false)
-		)) then return; end
+		if(subEvent == "SPELL_CAST_SUCCESS") then
 
-		-- if is cleanse
-		-- everywhere is false
-		-- and
-		-- (party & GCCleansesDungeon == false) or (raid & GCCleansesRaid == false)
-		-- do nothing > return
-		if(spellType == "cleanse" and GCCleansesEverywhere == false and (
-				(Addon.CurrentInstance == "party" and GCCleansesDungeon == false) or
-				(Addon.CurrentInstance == "raid" and GCCleansesRaid == false)
-		))then return; end
+			-- check if spell is in one of the lists
+			local spellData, spellType = Addon.findSpell(spellId);
+			if(spellData == nil) then return; end;
 
-		-- unpack data
-		local spellCD, spellClass = unpack(spellData);
+			-- unpack data
+			local spellCooldown, spellClass = unpack(spellData);
 
-		-- get a bar
-		local bar = getBar(
-			spellType,
-			sourceName .. "_" .. spellId,
-			spellId,
-			sourceName,
-			GetSpellTexture(spellId),
-			Addon.ClassColor[spellClass],
-			targetName
-		);
+			--spellId, iconPath, colorRGB, playerName, targetName, spellCooldown
+			Addon.Modules[spellType].StartBar(spellId, GetSpellTexture(spellId), Addon.ClassColor[spellClass], sourceName, targetName, spellCooldown);
 
-		-- if the bar has no point
-		if(bar:GetPoint(0) == nil) then
-		
-			-- get the anchor
-			local anchor = Addon.Anchors[spellType];
+		elseif(subEvent == "SPELL_AURA_APPLIED" and spellId == 240447) then
 
-			-- get last bar
-			local lastBar = anchor;
-			while(lastBar.nextBar ~= nil) do
-				lastBar = lastBar.nextBar;
-			end;
-			
-			-- attach the bar to the last bar
-			bar:SetPoint("BOTTOMRIGHT", lastBar, "TOPRIGHT", 0, 3);
-			
-			-- linking
-			lastBar.nextBar = bar;
-			bar.prevBar = lastBar;
-			bar.nextBar = nil;
-			
-		end;
-		
-		-- start
-		bar.Start(spellCD);
+			Addon.Modules["quaking"].StartBar();
+
+		end
 
 	end
 

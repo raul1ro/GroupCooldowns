@@ -14,7 +14,7 @@ Addon.ClassColor = {
 	["shaman"] = {0, 0.44, 0.87},
 	["warlock"] = {0.53, 0.53, 0.93},
 	["warrior"] = {0.78, 0.61, 0.43},
-	["race"] = {0.35, 0.35, 0.35},
+	["race"] = {0.4, 0.4, 0.4},
 	
 }
 
@@ -22,11 +22,13 @@ function Addon.findSpell(spellId)
 
 	local spellControl = Addon.ControlList[spellId];
 	local spellCleanse = Addon.CleanseList[spellId];
-	
+
 	if(spellControl ~= nil) then
 		return spellControl, "control";
 	elseif(spellCleanse ~= nil) then
 		return spellCleanse, "cleanse";
+	elseif(spellId == 240447) then -- quake
+		return {30, "race"}
 	else
 		return nil;
 	end

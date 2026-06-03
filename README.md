@@ -3,7 +3,7 @@
 
 <p>Shows the cooldown of controls (interrupt, stun, cc) and cleanses (dispell, util buff) of the group.</p>
 
-<p>Setup in <code>Interface > Addons > GroupCooldowns)</code></p>
+<p>Setup in <code>Interface > Addons > GroupCooldowns</code></p>
 
 <p>Author: raul1ro (discord)</p>
 

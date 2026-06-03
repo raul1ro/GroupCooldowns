@@ -1,13 +1,19 @@
 ## Interface: 70300
 ## Title: GroupCooldowns
 ## Author: raul1ro
-## Version: 1.0
+## Version: 2
 ## Notes: Shows the cooldown of controls (interrupt, stun, cc) and cleanses (dispell, util buff) of the group.
-## SavedVariablesPerCharacter: GCControlsAnchorPosition, GCCleansesAnchorPosition, GCControlsDungeon, GCControlsRaid, GCControlsEverywhere, GCCleansesDungeon, GCCleansesRaid, GCCleansesEverywhere
+## SavedVariablesPerCharacter: GCControlsAnchorPosition, GCCleansesAnchorPosition, GCControlsDungeon, GCControlsRaid, GCControlsReady, GCControlsEverywhere, GCCleansesDungeon, GCCleansesRaid, GCCleansesEverywhere, GCCleansesReady, GCQuakingAnchorPosition, GCQuaking
 
-Font.xml
-ProgressBar.lua
+resources\Font.xml
+libs\ProgressBar.lua
 
-SpellList.lua
-GroupCooldownsInterface.lua
+GCSpellList.lua
+
 GroupCooldowns.lua
+GroupCooldownsInterface.lua
+
+modules\ModuleUtils.lua
+modules\GCModuleCleanse.lua
+modules\GCModuleControl.lua
+modules\GCModuleQuaking.lua

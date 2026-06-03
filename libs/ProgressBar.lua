@@ -9,7 +9,7 @@ local function findBar()
 
 	for _, bar in pairs(Addon.ProgressBar.Cache) do
 
-		if(bar.active == false) then
+		if(bar.active == false and bar.reusable) then
 			return bar;
 		end
 
@@ -49,7 +49,7 @@ local function initFunctionsBar(bar)
 
 		-- save the end moment
 		local now = GetTime();
-		bar.endTime = now+duration;
+		bar.endTime = now + duration;
 
 		-- set the duration and status bar
 		setDuration(bar, duration);
@@ -225,7 +225,7 @@ local function prepareBar(bar, width, height, barTexture, iconTexture, label, co
 
 end
 
-function Addon.ProgressBar.getProgressBar(width, height, barTexture, iconTexture, label, spellId, colorRGB, targetName)
+function Addon.ProgressBar.getProgressBar(width, height, barTexture, iconTexture, label, colorRGB, spellId, targetName, isReusable)
 
 	local bar = findBar();
 
@@ -234,6 +234,7 @@ function Addon.ProgressBar.getProgressBar(width, height, barTexture, iconTexture
 
 		-- create the bar
 		bar = CreateFrame("Frame", nil, UIParent);
+		bar.reusable = isReusable;
 
 		-- init the bar
 		initBar(bar, height, barTexture);
